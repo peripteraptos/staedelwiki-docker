@@ -1,0 +1,72 @@
+# MediaWiki with MariaDB
+#
+# Access via "http://localhost:8080"
+#   (or "http://$(docker-machine ip):8080" if using docker-machine)
+version: '3.3'
+services:
+  mediawiki:
+    build: .
+#    image: mediawiki:1.41
+    restart: always
+    ports:
+      - 8080:80
+    links:
+      - database
+      - memcached
+    volumes:
+      - images:/var/www/html/images
+      - ./src/install_script.sh:/root/install_script.sh
+      # After initial setup, download LocalSettings.php to the same directory as
+      # this yaml and uncomment the following line and use compose to restart
+      # the mediawiki service
+      - ./configuration/LocalSettings.php:/var/www/html/LocalSettings.php
+      - ./configuration/LocalSettings.d/:/var/www/html/LocalSettings.d
+    secrets:
+      - mysql_password
+      - mail_password
+      - mail_username
+      - mediawiki_secret_key
+      - openid_client_id
+      - openid_client_secret
+      - openid_provider_url
+      - mysql_password
+      - mediawiki_secret_key
+  # This key also defines the name of the database host used during setup instead of the default "localhost"
+  database:
+    image: mariadb:latest
+    restart: always
+    environment:
+      # @see https://phabricator.wikimedia.org/source/mediawiki/browse/master/includes/DefaultSettings.php
+      MYSQL_DATABASE: staedelwiki
+      MYSQL_USER: staedelwiki
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+#      MYSQL_PASSWORD: null
+    volumes:
+      - db:/var/lib/mysql
+    secrets:
+    - mysql_password
+    - mysql_root_password
+  memcached:
+    image: memcached:latest
+    restart: always
+volumes:
+  images:
+  db:
+secrets:
+  mysql_password:
+    file: secrets/mysql_password
+  mysql_root_password:
+    file: secrets/mysql_root_password
+  mail_password:
+    file: secrets/mail_password
+  mail_username:
+    file: secrets/mail_username
+  mediawiki_secret_key:
+    file: secrets/mediawiki_secret_key
+  openid_client_id:
+    file: secrets/openid_client_id
+  openid_client_secret:
+    file: secrets/openid_client_secret
+  openid_provider_url:
+    file: secrets/openid_provider_url
